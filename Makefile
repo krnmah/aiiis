@@ -1,6 +1,6 @@
 PYTHON := .venv/Scripts/python.exe
 
-.PHONY: setup install run dev test lint format
+.PHONY: setup install run dev test lint format db-up db-down db-logs db-check
 
 setup:
 	@"$(PYTHON)" -m venv .venv
@@ -24,3 +24,15 @@ lint:
 
 format:
 	@"$(PYTHON)" -m black app tests
+
+db-up:
+	docker compose -f docker/docker-compose.yml up -d postgres
+
+db-down:
+	docker compose -f docker/docker-compose.yml down
+
+db-logs:
+	docker compose -f docker/docker-compose.yml logs -f postgres
+
+db-check:
+	@"$(PYTHON)" -m scripts.check_db

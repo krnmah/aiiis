@@ -4,10 +4,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "AI Incident Investigation System"
-    app_env: str = "development"
-    app_host: str = "127.0.0.1"
-    app_port: int = 8000
+    app_name: str
+    app_env: str
+    app_host: str
+    app_port: int
+    postgres_user: str
+    postgres_password: str
+    postgres_db: str
+    postgres_host: str
+    postgres_port: int
+    db_connect_timeout_seconds: int = 3
+    database_url: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -20,3 +27,14 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def get_database_url(settings: Settings) -> str:
+    if settings.database_url:
+        return settings.database_url
+
+    return (
+        "postgresql+psycopg://"
+        f"{settings.postgres_user}:{settings.postgres_password}"
+        f"@{settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}"
+    )
