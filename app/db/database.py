@@ -27,3 +27,9 @@ def check_db_connection() -> bool:
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return True
+
+
+def initialize_database() -> None:
+    from app.db import models
+
+    Base.metadata.create_all(bind=engine)

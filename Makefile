@@ -26,13 +26,13 @@ format:
 	@"$(PYTHON)" -m black app tests
 
 db-up:
-	docker compose -f docker/docker-compose.yml up -d postgres
+	docker compose --env-file .env -f docker/docker-compose.yml up -d postgres
 
 db-down:
-	docker compose -f docker/docker-compose.yml down
+	docker compose --env-file .env -f docker/docker-compose.yml down
 
 db-logs:
-	docker compose -f docker/docker-compose.yml logs -f postgres
+	docker compose --env-file .env -f docker/docker-compose.yml logs -f postgres
 
 db-check:
 	@"$(PYTHON)" -m scripts.check_db
