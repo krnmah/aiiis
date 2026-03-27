@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Any, cast
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,6 +15,7 @@ class Settings(BaseSettings):
     postgres_host: str
     postgres_port: int
     db_connect_timeout_seconds: int = 3
+    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     database_url: str | None = None
 
     model_config = SettingsConfigDict(
@@ -26,7 +28,9 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    # BaseSettings resolves required fields from environment/.env at runtime.
+    settings_cls = cast(Any, Settings)
+    return settings_cls()
 
 
 def get_database_url(settings: Settings) -> str:

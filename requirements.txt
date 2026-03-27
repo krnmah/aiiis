@@ -3,6 +3,7 @@ uvicorn[standard]==0.37.0
 pydantic-settings==2.11.0
 SQLAlchemy==2.0.43
 psycopg[binary]==3.2.10
+sentence-transformers==5.1.1
 pytest==8.4.2
 flake8==7.3.0
 black==25.9.0
