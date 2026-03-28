@@ -30,6 +30,26 @@ def check_db_connection() -> bool:
 
 
 def initialize_database() -> None:
-    from app.db import models
+    with engine.begin() as connection:
+        # first thing: make sure pgvector extension exists in this database.
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
+    # create all SQLAlchemy tables (no-op if they already exist).
     Base.metadata.create_all(bind=engine)
+
+    with engine.begin() as connection:
+        # this keeps old databases compatible by adding the embedding column when missing.
+        connection.execute(
+            text(
+                "ALTER TABLE logs "
+                f"ADD COLUMN IF NOT EXISTS embedding vector({settings.embedding_dimension})"
+            )
+        )
+
+        # this index helps similarity search once the table starts growing.
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS logs_embedding_ivfflat_idx "
+                "ON logs USING ivfflat (embedding vector_cosine_ops)"
+            )
+        )

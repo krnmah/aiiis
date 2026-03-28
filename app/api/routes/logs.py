@@ -1,10 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.schemas.logs import LogCreateRequest, LogCreateResponse
+from app.api.schemas.logs import (
+    LogCreateRequest,
+    LogCreateResponse,
+    LogEmbeddingResponse,
+    SimilarLogItem,
+    SimilarLogsResponse,
+)
 from app.db.database import get_db
-from app.services.ingestion_service import create_log_entry
-from app.vector_store.in_memory_store import get_embedding_store
+from app.services.ingestion_service import (
+    create_log_entry,
+    find_similar_logs,
+    get_embedding_for_log,
+)
 
 router = APIRouter(tags=["logs"])
 
@@ -23,19 +32,44 @@ def ingest_log(payload: LogCreateRequest, db: Session = Depends(get_db)) -> LogC
 
 
 @router.get("/logs/{log_id}/embedding")
-def get_log_embedding(log_id: int, include_vector: bool = False) -> dict:
-    # read the temporary embedding generated at ingestion time.
-    embedding = get_embedding_store().get(log_id=log_id)
+def get_log_embedding(
+    log_id: int,
+    include_vector: bool = False,
+    db: Session = Depends(get_db),
+) -> LogEmbeddingResponse:
+    # reads embeddings directly from postgres (pgvector column).
+    embedding = get_embedding_for_log(db=db, log_id=log_id)
     if embedding is None:
         raise HTTPException(status_code=404, detail="Embedding not found for log")
 
-    response: dict[str, object] = {
-        "log_id": log_id,
-        "embedding_dimension": len(embedding),
-    }
+    return LogEmbeddingResponse(
+        log_id=log_id,
+        embedding_dimension=len(embedding),
+        embedding=embedding if include_vector else None,
+    )
 
-    # keep full vector output optional to avoid large default responses.
-    if include_vector:
-        response["embedding"] = embedding
 
-    return response
+@router.get("/logs/similar", response_model=SimilarLogsResponse)
+def search_similar_logs(
+    query: str,
+    top_k: int = 5,
+    db: Session = Depends(get_db),
+) -> SimilarLogsResponse:
+    # this endpoint runs a vector similarity query in postgres and returns top-k nearest logs.
+    safe_top_k = max(1, min(top_k, 20))
+    similar = find_similar_logs(db=db, query=query, top_k=safe_top_k)
+
+    results = [
+        SimilarLogItem(
+            id=log.id,
+            service_name=log.service_name,
+            level=log.level,
+            message=log.message,
+            trace_id=log.trace_id,
+            timestamp=log.timestamp,
+            similarity_score=score,
+        )
+        for log, score in similar
+    ]
+
+    return SimilarLogsResponse(query=query, total=len(results), results=results)

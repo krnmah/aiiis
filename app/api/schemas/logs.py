@@ -19,3 +19,25 @@ class LogCreateResponse(BaseModel):
     message: str
     trace_id: str | None
     timestamp: datetime
+
+
+class LogEmbeddingResponse(BaseModel):
+    log_id: int
+    embedding_dimension: int
+    embedding: list[float] | None = None
+
+
+class SimilarLogItem(BaseModel):
+    id: int
+    service_name: str
+    level: str
+    message: str
+    trace_id: str | None
+    timestamp: datetime
+    similarity_score: float
+
+
+class SimilarLogsResponse(BaseModel):
+    query: str
+    total: int
+    results: list[SimilarLogItem]
