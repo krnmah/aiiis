@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     postgres_host: str
     postgres_port: int
     db_connect_timeout_seconds: int = 3
+    app_log_level: str = "INFO"
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
     database_url: str | None = None

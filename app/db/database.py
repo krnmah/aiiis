@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -5,6 +7,7 @@ from app.core.config import get_database_url, get_settings
 
 settings = get_settings()
 DATABASE_URL = get_database_url(settings)
+logger = logging.getLogger("app.db")
 
 engine = create_engine(
     DATABASE_URL,
@@ -26,10 +29,13 @@ def get_db():
 def check_db_connection() -> bool:
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
+    logger.info("db_connection_check_succeeded")
     return True
 
 
 def initialize_database() -> None:
+    logger.info("db_initialization_started")
+
     with engine.begin() as connection:
         # first thing: make sure pgvector extension exists in this database.
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -53,3 +59,5 @@ def initialize_database() -> None:
                 "ON logs USING ivfflat (embedding vector_cosine_ops)"
             )
         )
+
+    logger.info("db_initialization_complete")
