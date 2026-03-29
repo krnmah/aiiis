@@ -11,11 +11,8 @@ from app.api.schemas.logs import (
     SimilarLogsResponse,
 )
 from app.db.database import get_db
-from app.services.ingestion_service import (
-    create_log_entry,
-    find_similar_logs,
-    get_embedding_for_log,
-)
+from app.services.ingestion_service import create_log_entry
+from app.services.retrieval_service import find_similar_logs, get_embedding_for_log
 from app.services.exceptions import IngestionPipelineError
 
 router = APIRouter(tags=["logs"])
