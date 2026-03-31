@@ -5,7 +5,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.models import LogEntry
-from app.embeddings.embedding_service import get_embedding_service
 from app.services.exceptions import IngestionPipelineError
 
 logger = logging.getLogger("app.retrieval")
@@ -18,15 +17,13 @@ def get_embedding_for_log(db: Session, log_id: int) -> list[float] | None:
     return embedding
 
 
-def find_similar_logs(db: Session, query: str, top_k: int) -> list[tuple[LogEntry, float]]:
+def find_similar_logs_by_embedding(
+    db: Session,
+    query_embedding: list[float],
+    top_k: int,
+) -> list[tuple[LogEntry, float]]:
+    # this module handles vector search in db, not text query embedding.
     logger.info("similarity_search_started", extra={"top_k": top_k})
-
-    try:
-        # use the same embedding model as ingestion so vectors are comparable in one space.
-        query_embedding = get_embedding_service().embed_text(query)
-    except Exception as exc:
-        logger.exception("similarity_embedding_generation_failed")
-        raise IngestionPipelineError("similarity_embedding_generation_failed") from exc
 
     distance_expr = LogEntry.embedding.cosine_distance(query_embedding)
     stmt = (

@@ -85,11 +85,11 @@ def test_search_similar_logs_clamps_top_k(monkeypatch: pytest.MonkeyPatch) -> No
         timestamp=datetime.now(timezone.utc),
     )
 
-    def _fake_find_similar_logs(db: MagicMock, query: str, top_k: int):
+    def _fake_find_similar_logs_by_query(db: MagicMock, query: str, top_k: int):
         captured["top_k"] = top_k
         return [(fake_log, 0.91)]
 
-    monkeypatch.setattr(logs_route, "find_similar_logs", _fake_find_similar_logs)
+    monkeypatch.setattr(logs_route, "find_similar_logs_by_query", _fake_find_similar_logs_by_query)
 
     response = logs_route.search_similar_logs(query="amount mismatch", top_k=999, db=MagicMock())
 
@@ -102,7 +102,7 @@ def test_search_similar_logs_maps_pipeline_error(monkeypatch: pytest.MonkeyPatch
     def _raise_pipeline_error(db: MagicMock, query: str, top_k: int):
         raise IngestionPipelineError("similarity_query_failed")
 
-    monkeypatch.setattr(logs_route, "find_similar_logs", _raise_pipeline_error)
+    monkeypatch.setattr(logs_route, "find_similar_logs_by_query", _raise_pipeline_error)
 
     with pytest.raises(HTTPException) as exc:
         logs_route.search_similar_logs(query="test", top_k=3, db=MagicMock())

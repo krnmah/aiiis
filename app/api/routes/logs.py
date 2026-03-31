@@ -12,7 +12,8 @@ from app.api.schemas.logs import (
 )
 from app.db.database import get_db
 from app.services.ingestion_service import create_log_entry
-from app.services.retrieval_service import find_similar_logs, get_embedding_for_log
+from app.services.query_retrieval_service import find_similar_logs_by_query
+from app.services.retrieval_service import get_embedding_for_log
 from app.services.exceptions import IngestionPipelineError
 
 router = APIRouter(tags=["logs"])
@@ -71,7 +72,7 @@ def search_similar_logs(
     # this endpoint runs a vector similarity query in postgres and returns top-k nearest logs.
     safe_top_k = max(1, min(top_k, 20))
     try:
-        similar = find_similar_logs(db=db, query=query, top_k=safe_top_k)
+        similar = find_similar_logs_by_query(db=db, query=query, top_k=safe_top_k)
     except IngestionPipelineError as exc:
         logger.exception("similarity_request_failed", extra={"top_k": safe_top_k})
         raise HTTPException(status_code=500, detail="Similarity search failed") from exc
