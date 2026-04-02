@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     postgres_port: int
     db_connect_timeout_seconds: int = 3
     app_log_level: str = "INFO"
+    llm_provider: str = "ollama"
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "llama3.2:3b"
+    ollama_timeout_seconds: int = 60
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
     database_url: str | None = None
