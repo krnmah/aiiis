@@ -5,6 +5,7 @@ import logging
 from fastapi import FastAPI
 
 from app.api.routes.health import router as health_router
+from app.api.routes.incidents import router as incidents_router
 from app.api.routes.llm import router as llm_router
 from app.api.routes.logs import router as logs_router
 from app.core.config import get_settings
@@ -29,3 +30,4 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(health_router)
 app.include_router(logs_router)
 app.include_router(llm_router)
+app.include_router(incidents_router)
