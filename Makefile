@@ -1,6 +1,6 @@
 PYTHON := .venv/Scripts/python.exe
 
-.PHONY: setup install run dev test lint format db-up db-down db-logs db-check
+.PHONY: setup install run dev test lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs
 
 setup:
 	@"$(PYTHON)" -m venv .venv
@@ -36,3 +36,12 @@ db-logs:
 
 db-check:
 	@"$(PYTHON)" -m scripts.check_db
+
+monitor-up:
+	docker compose --env-file .env -f docker/docker-compose.yml up -d prometheus grafana
+
+monitor-down:
+	docker compose --env-file .env -f docker/docker-compose.yml stop prometheus grafana
+
+monitor-logs:
+	docker compose --env-file .env -f docker/docker-compose.yml logs -f prometheus grafana

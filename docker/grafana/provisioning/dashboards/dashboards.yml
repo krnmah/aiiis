@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: AIIIS Dashboards
+    orgId: 1
+    folder: AIIIS
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
