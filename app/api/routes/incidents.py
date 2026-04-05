@@ -1,10 +1,12 @@
 import logging
+from time import perf_counter
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.incidents import IncidentAnalyzeRequest, IncidentAnalyzeResponse
 from app.db.database import get_db
+from app.metrics.prometheus_metrics import observe_request
 from app.services.exceptions import IncidentAnalysisError
 from app.services.incident_analyzer_service import analyze_incident
 
@@ -21,11 +23,21 @@ def analyze_incident_route(
     payload: IncidentAnalyzeRequest,
     db: Session = Depends(get_db),
 ) -> IncidentAnalyzeResponse:
+    start_time = perf_counter()
+    status_code = 200
     try:
         result = analyze_incident(db=db, query=payload.query, top_k=payload.top_k)
     except IncidentAnalysisError as exc:
+        status_code = 500
         logger.exception("incident_analysis_request_failed")
         raise HTTPException(status_code=500, detail="Incident analysis failed") from exc
+    finally:
+        observe_request(
+            endpoint="/incidents",
+            method="POST",
+            status_code=status_code,
+            duration_seconds=perf_counter() - start_time,
+        )
 
     logger.info(
         "incident_analysis_request_succeeded",
