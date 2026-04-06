@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: int = 60
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
+    redis_enabled: bool = True
+    redis_host: str = "127.0.0.1"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_password: str | None = None
+    redis_cache_ttl_seconds: int = 120
     database_url: str | None = None
 
     model_config = SettingsConfigDict(

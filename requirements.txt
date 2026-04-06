@@ -7,6 +7,7 @@ sentence-transformers==5.1.1
 pgvector==0.4.1
 httpx==0.28.1
 prometheus-client==0.23.1
+redis==5.2.1
 pytest==8.4.2
 flake8==7.3.0
 black==25.9.0

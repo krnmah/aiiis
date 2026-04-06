@@ -11,6 +11,8 @@ from app.api.schemas.logs import (
     SimilarLogItem,
     SimilarLogsResponse,
 )
+from app.cache.redis_cache import build_cache_key, get_cache_client
+from app.core.config import get_settings
 from app.db.database import get_db
 from app.metrics.prometheus_metrics import observe_request
 from app.services.ingestion_service import create_log_entry
@@ -93,8 +95,22 @@ def search_similar_logs(
 ) -> SimilarLogsResponse:
     start_time = perf_counter()
     status_code = 200
+    settings = get_settings()
     # this endpoint runs a vector similarity query in postgres and returns top-k nearest logs.
     safe_top_k = max(1, min(top_k, 20))
+    cache_key = build_cache_key(
+        "similar_logs",
+        query=query,
+        top_k=safe_top_k,
+    )
+    cache = get_cache_client()
+
+    if cache is not None:
+        cached_payload = cache.get_json(cache_key)
+        if cached_payload is not None:
+            logger.info("similarity_cache_hit", extra={"top_k": safe_top_k})
+            return SimilarLogsResponse(**cached_payload)
+
     try:
         similar = find_similar_logs_by_query(db=db, query=query, top_k=safe_top_k)
     except IngestionPipelineError as exc:
@@ -123,4 +139,13 @@ def search_similar_logs(
     ]
 
     logger.info("similarity_request_succeeded", extra={"result_count": len(results)})
-    return SimilarLogsResponse(query=query, total=len(results), results=results)
+    response = SimilarLogsResponse(query=query, total=len(results), results=results)
+
+    if cache is not None:
+        cache.set_json(
+            key=cache_key,
+            payload=response.model_dump(mode="json"),
+            ttl_seconds=settings.redis_cache_ttl_seconds,
+        )
+
+    return response

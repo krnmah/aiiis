@@ -10,6 +10,19 @@ from app.api.schemas.logs import LogCreateRequest
 from app.services.exceptions import IngestionPipelineError
 
 
+class _FakeCache:
+    def __init__(self, seed: dict[str, dict] | None = None) -> None:
+        self._store = seed or {}
+        self.set_calls = 0
+
+    def get_json(self, key: str):
+        return self._store.get(key)
+
+    def set_json(self, key: str, payload: dict, ttl_seconds: int) -> None:
+        self._store[key] = payload
+        self.set_calls += 1
+
+
 def test_ingest_log_success(monkeypatch: pytest.MonkeyPatch) -> None:
     # route test uses fake service result to keep scope focused on route mapping.
     fake_log = SimpleNamespace(
@@ -109,3 +122,61 @@ def test_search_similar_logs_maps_pipeline_error(monkeypatch: pytest.MonkeyPatch
 
     assert exc.value.status_code == 500
     assert exc.value.detail == "Similarity search failed"
+
+
+def test_search_similar_logs_uses_cache_hit(monkeypatch: pytest.MonkeyPatch) -> None:
+    cached = {
+        "query": "amount mismatch",
+        "total": 1,
+        "results": [
+            {
+                "id": 42,
+                "service_name": "checkout",
+                "level": "ERROR",
+                "message": "amount mismatch",
+                "trace_id": "trace-c",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "similarity_score": 0.99,
+            }
+        ],
+    }
+
+    fake_cache = _FakeCache(seed={"any": cached})
+    monkeypatch.setattr(logs_route, "build_cache_key", lambda *args, **kwargs: "any")
+    monkeypatch.setattr(logs_route, "get_cache_client", lambda: fake_cache)
+    monkeypatch.setattr(logs_route, "find_similar_logs_by_query", lambda *args, **kwargs: None)
+
+    response = logs_route.search_similar_logs(query="amount mismatch", top_k=3, db=MagicMock())
+
+    assert response.total == 1
+    assert response.results[0].id == 42
+
+
+def test_search_similar_logs_caches_on_first_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_cache = _FakeCache()
+    calls = {"count": 0}
+
+    fake_log = SimpleNamespace(
+        id=2,
+        service_name="checkout",
+        level="WARNING",
+        message="amount mismatch",
+        trace_id=None,
+        timestamp=datetime.now(timezone.utc),
+    )
+
+    def _fake_find_similar_logs_by_query(db: MagicMock, query: str, top_k: int):
+        calls["count"] += 1
+        return [(fake_log, 0.91)]
+
+    monkeypatch.setattr(logs_route, "build_cache_key", lambda *args, **kwargs: "same")
+    monkeypatch.setattr(logs_route, "get_cache_client", lambda: fake_cache)
+    monkeypatch.setattr(logs_route, "find_similar_logs_by_query", _fake_find_similar_logs_by_query)
+
+    first = logs_route.search_similar_logs(query="amount mismatch", top_k=3, db=MagicMock())
+    second = logs_route.search_similar_logs(query="amount mismatch", top_k=3, db=MagicMock())
+
+    assert first.total == 1
+    assert second.total == 1
+    assert calls["count"] == 1
+    assert fake_cache.set_calls == 1
