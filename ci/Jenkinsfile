@@ -1,18 +1,6 @@
 pipeline {
   agent any
 
-  environment {
-    APP_NAME = 'AI Incident Investigation System'
-    APP_ENV = 'ci'
-    APP_HOST = '127.0.0.1'
-    APP_PORT = '8000'
-    POSTGRES_USER = 'aiiis'
-    POSTGRES_PASSWORD = 'aiiis'
-    POSTGRES_DB = 'aiiis'
-    POSTGRES_HOST = '127.0.0.1'
-    POSTGRES_PORT = '5432'
-  }
-
   stages {
     stage('Checkout') {
       steps {
@@ -33,19 +21,29 @@ pipeline {
 
     stage('Lint') {
       steps {
-        sh '''
-          . .venv/bin/activate
-          python -m flake8 app tests --ignore=E501,E302,W293,F401
-        '''
+        withCredentials([file(credentialsId: 'aiiis-ci-env', variable: 'CI_ENV_FILE')]) {
+          sh '''
+            set -a
+            . "$CI_ENV_FILE"
+            set +a
+            . .venv/bin/activate
+            python -m flake8 app tests --ignore=E501,E302,W293,F401
+          '''
+        }
       }
     }
 
     stage('Test') {
       steps {
-        sh '''
-          . .venv/bin/activate
-          python -m pytest -q
-        '''
+        withCredentials([file(credentialsId: 'aiiis-ci-env', variable: 'CI_ENV_FILE')]) {
+          sh '''
+            set -a
+            . "$CI_ENV_FILE"
+            set +a
+            . .venv/bin/activate
+            python -m pytest -q
+          '''
+        }
       }
     }
   }

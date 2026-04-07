@@ -10,16 +10,6 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      APP_NAME: AI Incident Investigation System
-      APP_ENV: ci
-      APP_HOST: 127.0.0.1
-      APP_PORT: "8000"
-      POSTGRES_USER: aiiis
-      POSTGRES_PASSWORD: aiiis
-      POSTGRES_DB: aiiis
-      POSTGRES_HOST: 127.0.0.1
-      POSTGRES_PORT: "5432"
 
     steps:
       - name: Checkout
@@ -34,6 +24,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+
+      - name: Load CI environment from secret
+        env:
+          CI_ENV_FILE: ${{ secrets.CI_ENV_FILE }}
+        run: |
+          if [ -z "${CI_ENV_FILE}" ]; then
+            echo "Missing required repository secret: CI_ENV_FILE"
+            exit 1
+          fi
+
+          printf "%s" "${CI_ENV_FILE}" > .env.ci
+
+          while IFS= read -r line || [ -n "$line" ]; do
+            if [[ -z "$line" || "$line" == \#* ]]; then
+              continue
+            fi
+            echo "$line" >> "$GITHUB_ENV"
+          done < .env.ci
 
       - name: Lint
         run: python -m flake8 app tests --ignore=E501,E302,W293,F401
