@@ -1,6 +1,6 @@
 PYTHON := .venv/Scripts/python.exe
 
-.PHONY: setup install run dev test lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs
+.PHONY: setup install run dev test lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password
 
 setup:
 	@"$(PYTHON)" -m venv .venv
@@ -54,3 +54,15 @@ cache-down:
 
 cache-logs:
 	docker compose --env-file .env -f docker/docker-compose.yml logs -f redis
+
+jenkins-up:
+	docker compose --env-file .env -f docker/docker-compose.yml up -d jenkins
+
+jenkins-down:
+	docker compose --env-file .env -f docker/docker-compose.yml stop jenkins
+
+jenkins-logs:
+	docker compose --env-file .env -f docker/docker-compose.yml logs -f jenkins
+
+jenkins-password:
+	docker compose --env-file .env -f docker/docker-compose.yml exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword

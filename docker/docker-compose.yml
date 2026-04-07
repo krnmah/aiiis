@@ -59,8 +59,21 @@ services:
       timeout: 5s
       retries: 5
 
+  jenkins:
+    build:
+      context: ./jenkins
+    container_name: aiiis-jenkins
+    ports:
+      - "8081:8080"
+      - "50001:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    environment:
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=true
+
 volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
   redis_data:
+  jenkins_home:
