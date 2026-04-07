@@ -34,6 +34,7 @@ def test_incidents_route_success(monkeypatch: pytest.MonkeyPatch) -> None:
         "analyze_incident",
         lambda db, query, top_k: fake_result,
     )
+    monkeypatch.setattr(incidents_route, "get_cache_client", lambda: None)
 
     payload = IncidentAnalyzeRequest(query="payment failures", top_k=3)
     result = incidents_route.analyze_incident_route(payload=payload, db=SimpleNamespace())
@@ -49,6 +50,7 @@ def test_incidents_route_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         raise IncidentAnalysisError("incident_analysis_llm_failed")
 
     monkeypatch.setattr(incidents_route, "analyze_incident", _raise)
+    monkeypatch.setattr(incidents_route, "get_cache_client", lambda: None)
 
     payload = IncidentAnalyzeRequest(query="payment failures", top_k=3)
 

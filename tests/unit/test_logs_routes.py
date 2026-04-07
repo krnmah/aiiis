@@ -88,6 +88,7 @@ def test_get_log_embedding_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_search_similar_logs_clamps_top_k(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, int] = {}
+    monkeypatch.setattr(logs_route, "get_cache_client", lambda: None)
 
     fake_log = SimpleNamespace(
         id=2,
@@ -112,6 +113,8 @@ def test_search_similar_logs_clamps_top_k(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_search_similar_logs_maps_pipeline_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(logs_route, "get_cache_client", lambda: None)
+
     def _raise_pipeline_error(db: MagicMock, query: str, top_k: int):
         raise IngestionPipelineError("similarity_query_failed")
 
