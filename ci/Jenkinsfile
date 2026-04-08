@@ -33,7 +33,7 @@ pipeline {
       }
     }
 
-    stage('Test') {
+    stage('Unit Tests') {
       steps {
         withCredentials([file(credentialsId: 'aiiis-ci-env', variable: 'CI_ENV_FILE')]) {
           sh '''
@@ -41,7 +41,21 @@ pipeline {
             . "$CI_ENV_FILE"
             set +a
             . .venv/bin/activate
-            python -m pytest -q
+            python -m pytest tests/unit -q
+          '''
+        }
+      }
+    }
+
+    stage('Integration Tests') {
+      steps {
+        withCredentials([file(credentialsId: 'aiiis-ci-env', variable: 'CI_ENV_FILE')]) {
+          sh '''
+            set -a
+            . "$CI_ENV_FILE"
+            set +a
+            . .venv/bin/activate
+            python -m pytest tests/integration -q
           '''
         }
       }

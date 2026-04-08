@@ -1,6 +1,6 @@
 PYTHON := .venv/Scripts/python.exe
 
-.PHONY: setup install run dev test lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password
+.PHONY: setup install run dev test test-integration lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password
 
 setup:
 	@"$(PYTHON)" -m venv .venv
@@ -18,6 +18,9 @@ dev:
 
 test:
 	@"$(PYTHON)" -m pytest -q
+
+test-integration:
+	@"$(PYTHON)" -m pytest tests/integration -q
 
 lint:
 	@"$(PYTHON)" -m flake8 app tests
