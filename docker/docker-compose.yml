@@ -1,4 +1,22 @@
 services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: aiiis-api
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: aiiis-postgres
@@ -28,7 +46,7 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     depends_on:
-      - postgres
+      - api
 
   grafana:
     image: grafana/grafana:11.2.0

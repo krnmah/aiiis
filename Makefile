@@ -1,6 +1,6 @@
 PYTHON := .venv/Scripts/python.exe
 
-.PHONY: setup install run dev test test-integration lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password
+.PHONY: setup install run dev test test-integration lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password docker-up docker-down docker-logs
 
 setup:
 	@"$(PYTHON)" -m venv .venv
@@ -69,3 +69,12 @@ jenkins-logs:
 
 jenkins-password:
 	docker compose --env-file .env -f docker/docker-compose.yml exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+
+docker-up:
+	docker compose --env-file .env -f docker/docker-compose.yml up -d api postgres redis
+
+docker-down:
+	docker compose --env-file .env -f docker/docker-compose.yml stop api postgres redis
+
+docker-logs:
+	docker compose --env-file .env -f docker/docker-compose.yml logs -f api postgres redis
