@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.llm.base_provider import BaseLLMProvider
+from app.llm.huggingface_provider import HuggingFaceProvider
 from app.llm.ollama_provider import OllamaProvider
 from app.services import llm_service
 from app.services.exceptions import LLMProviderError
@@ -58,6 +59,38 @@ def test_get_llm_provider_returns_ollama_provider(monkeypatch: pytest.MonkeyPatc
 
     assert isinstance(provider, OllamaProvider)
     llm_service.get_llm_provider.cache_clear()
+
+
+def test_get_llm_provider_returns_huggingface_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    llm_service.get_llm_provider.cache_clear()
+    monkeypatch.setattr(
+        llm_service,
+        "get_settings",
+        lambda: SimpleNamespace(llm_provider="huggingface"),
+    )
+
+    provider = llm_service.get_llm_provider()
+
+    assert isinstance(provider, HuggingFaceProvider)
+    llm_service.get_llm_provider.cache_clear()
+
+
+def test_get_default_llm_model_huggingface(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        llm_service,
+        "get_settings",
+        lambda: SimpleNamespace(
+            llm_provider="huggingface",
+            ollama_model="llama3.2:3b",
+            huggingface_model="google/flan-t5-base",
+        ),
+    )
+
+    model = llm_service.get_default_llm_model()
+
+    assert model == "google/flan-t5-base"
 
 
 def test_get_llm_provider_raises_for_unsupported_provider(

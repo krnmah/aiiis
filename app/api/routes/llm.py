@@ -1,13 +1,17 @@
 import logging
 from time import perf_counter
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.schemas.llm import LLMGenerateRequest, LLMGenerateResponse
+from app.api.schemas.llm import (
+    LLMGenerateRequest,
+    LLMGenerateResponse,
+    LLMModelCheckResponse,
+)
 from app.core.config import get_settings
 from app.metrics.prometheus_metrics import observe_request
 from app.services.exceptions import LLMProviderError
-from app.services.llm_service import generate_with_local_llm
+from app.services.llm_service import generate_with_local_llm, get_default_llm_model
 
 router = APIRouter(tags=["llm"])
 logger = logging.getLogger("app.routes.llm")
@@ -18,7 +22,7 @@ def test_local_llm(payload: LLMGenerateRequest) -> LLMGenerateResponse:
     start_time = perf_counter()
     status_code = 200
     settings = get_settings()
-    selected_model = payload.model or settings.ollama_model
+    selected_model = payload.model or get_default_llm_model()
 
     try:
         response_text = generate_with_local_llm(
@@ -43,4 +47,36 @@ def test_local_llm(payload: LLMGenerateRequest) -> LLMGenerateResponse:
         provider=settings.llm_provider,
         model=selected_model,
         response=response_text,
+    )
+
+
+@router.get("/llm/model/check", response_model=LLMModelCheckResponse, status_code=status.HTTP_200_OK)
+def check_llm_model(model: str | None = Query(default=None, max_length=200)) -> LLMModelCheckResponse:
+    start_time = perf_counter()
+    status_code = 200
+    settings = get_settings()
+    selected_model = model or get_default_llm_model()
+
+    try:
+        generate_with_local_llm(prompt="healthcheck", model=selected_model)
+        detail = "model_available"
+        available = True
+    except LLMProviderError as exc:
+        status_code = 503
+        logger.warning("llm_model_check_failed", extra={"model": selected_model})
+        detail = str(exc)
+        available = False
+    finally:
+        observe_request(
+            endpoint="/llm/model/check",
+            method="GET",
+            status_code=status_code,
+            duration_seconds=perf_counter() - start_time,
+        )
+
+    return LLMModelCheckResponse(
+        provider=settings.llm_provider,
+        model=selected_model,
+        available=available,
+        detail=detail,
     )

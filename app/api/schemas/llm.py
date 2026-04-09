@@ -11,3 +11,10 @@ class LLMGenerateResponse(BaseModel):
     provider: str
     model: str
     response: str
+
+
+class LLMModelCheckResponse(BaseModel):
+    provider: str
+    model: str
+    available: bool
+    detail: str
