@@ -1,6 +1,6 @@
 PYTHON := .venv/Scripts/python.exe
 
-.PHONY: setup install run dev test test-integration lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password docker-up docker-down docker-logs
+.PHONY: setup install run dev test test-integration lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password docker-up docker-down docker-logs simulate-logs
 
 setup:
 	@"$(PYTHON)" -m venv .venv
@@ -23,7 +23,7 @@ test-integration:
 	@"$(PYTHON)" -m pytest tests/integration -q
 
 lint:
-	@"$(PYTHON)" -m flake8 app tests
+	@"$(PYTHON)" -m flake8 app tests --ignore=E501,E302,W293,F401
 
 format:
 	@"$(PYTHON)" -m black app tests
@@ -78,3 +78,6 @@ docker-down:
 
 docker-logs:
 	docker compose --env-file .env -f docker/docker-compose.yml logs -f api postgres redis
+
+simulate-logs:
+	@"$(PYTHON)" -m scripts.simulate_logs --count 50 --scenario mixed

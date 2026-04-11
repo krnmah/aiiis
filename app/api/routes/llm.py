@@ -25,7 +25,9 @@ router = APIRouter(tags=["llm"])
 logger = logging.getLogger("app.routes.llm")
 
 
-@router.post("/llm/test", response_model=LLMGenerateResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/llm/test", response_model=LLMGenerateResponse, status_code=status.HTTP_200_OK
+)
 def test_local_llm(payload: LLMGenerateRequest) -> LLMGenerateResponse:
     start_time = perf_counter()
     status_code = 200
@@ -58,8 +60,14 @@ def test_local_llm(payload: LLMGenerateRequest) -> LLMGenerateResponse:
     )
 
 
-@router.get("/llm/model/check", response_model=LLMModelCheckResponse, status_code=status.HTTP_200_OK)
-def check_llm_model(model: str | None = Query(default=None, max_length=200)) -> LLMModelCheckResponse:
+@router.get(
+    "/llm/model/check",
+    response_model=LLMModelCheckResponse,
+    status_code=status.HTTP_200_OK,
+)
+def check_llm_model(
+    model: str | None = Query(default=None, max_length=200)
+) -> LLMModelCheckResponse:
     start_time = perf_counter()
     status_code = 200
     settings = get_settings()
@@ -90,7 +98,9 @@ def check_llm_model(model: str | None = Query(default=None, max_length=200)) -> 
     )
 
 
-@router.post("/llm/compare", response_model=LLMCompareResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/llm/compare", response_model=LLMCompareResponse, status_code=status.HTTP_200_OK
+)
 def compare_llm_outputs(payload: LLMCompareRequest) -> LLMCompareResponse:
     start_time = perf_counter()
     status_code = 200
@@ -98,7 +108,9 @@ def compare_llm_outputs(payload: LLMCompareRequest) -> LLMCompareResponse:
 
     try:
         for provider_name in payload.providers:
-            model = payload.model_overrides.get(provider_name) or get_default_llm_model_for_provider(provider_name)
+            model = payload.model_overrides.get(
+                provider_name
+            ) or get_default_llm_model_for_provider(provider_name)
             try:
                 text = generate_with_provider(
                     provider_name=provider_name,
@@ -115,7 +127,10 @@ def compare_llm_outputs(payload: LLMCompareRequest) -> LLMCompareResponse:
                 )
             except LLMProviderError as exc:
                 status_code = 207
-                logger.warning("llm_compare_provider_failed", extra={"provider": provider_name, "model": model})
+                logger.warning(
+                    "llm_compare_provider_failed",
+                    extra={"provider": provider_name, "model": model},
+                )
                 results.append(
                     LLMCompareResult(
                         provider=provider_name,

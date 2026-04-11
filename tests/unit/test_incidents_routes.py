@@ -37,7 +37,9 @@ def test_incidents_route_success(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(incidents_route, "get_cache_client", lambda: None)
 
     payload = IncidentAnalyzeRequest(query="payment failures", top_k=3)
-    result = incidents_route.analyze_incident_route(payload=payload, db=SimpleNamespace())
+    result = incidents_route.analyze_incident_route(
+        payload=payload, db=SimpleNamespace()
+    )
 
     assert result.query == "payment failures"
     assert result.root_cause.startswith("Root cause")
@@ -73,12 +75,18 @@ def test_incidents_route_uses_cache_hit(monkeypatch: pytest.MonkeyPatch) -> None
         }
     )
 
-    monkeypatch.setattr(incidents_route, "build_cache_key", lambda *args, **kwargs: "incident")
+    monkeypatch.setattr(
+        incidents_route, "build_cache_key", lambda *args, **kwargs: "incident"
+    )
     monkeypatch.setattr(incidents_route, "get_cache_client", lambda: fake_cache)
-    monkeypatch.setattr(incidents_route, "analyze_incident", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        incidents_route, "analyze_incident", lambda *args, **kwargs: None
+    )
 
     payload = IncidentAnalyzeRequest(query="payment failures", top_k=3)
-    result = incidents_route.analyze_incident_route(payload=payload, db=SimpleNamespace())
+    result = incidents_route.analyze_incident_route(
+        payload=payload, db=SimpleNamespace()
+    )
 
     assert result.root_cause == "Root cause: cached response"
     assert result.analyzed_log_ids == [9]
@@ -97,13 +105,19 @@ def test_incidents_route_caches_on_first_call(monkeypatch: pytest.MonkeyPatch) -
             analyzed_log_count=2,
         )
 
-    monkeypatch.setattr(incidents_route, "build_cache_key", lambda *args, **kwargs: "incident")
+    monkeypatch.setattr(
+        incidents_route, "build_cache_key", lambda *args, **kwargs: "incident"
+    )
     monkeypatch.setattr(incidents_route, "get_cache_client", lambda: fake_cache)
     monkeypatch.setattr(incidents_route, "analyze_incident", _fake_analyze)
 
     payload = IncidentAnalyzeRequest(query="payment failures", top_k=3)
-    first = incidents_route.analyze_incident_route(payload=payload, db=SimpleNamespace())
-    second = incidents_route.analyze_incident_route(payload=payload, db=SimpleNamespace())
+    first = incidents_route.analyze_incident_route(
+        payload=payload, db=SimpleNamespace()
+    )
+    second = incidents_route.analyze_incident_route(
+        payload=payload, db=SimpleNamespace()
+    )
 
     assert first.analyzed_log_count == 2
     assert second.analyzed_log_count == 2

@@ -68,9 +68,13 @@ def test_ingest_log_maps_pipeline_error(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_get_log_embedding_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(logs_route, "get_embedding_for_log", lambda db, log_id: [0.3, 0.4, 0.5])
+    monkeypatch.setattr(
+        logs_route, "get_embedding_for_log", lambda db, log_id: [0.3, 0.4, 0.5]
+    )
 
-    response = logs_route.get_log_embedding(log_id=33, include_vector=False, db=MagicMock())
+    response = logs_route.get_log_embedding(
+        log_id=33, include_vector=False, db=MagicMock()
+    )
 
     assert response.log_id == 33
     assert response.embedding_dimension == 3
@@ -103,16 +107,22 @@ def test_search_similar_logs_clamps_top_k(monkeypatch: pytest.MonkeyPatch) -> No
         captured["top_k"] = top_k
         return [(fake_log, 0.91)]
 
-    monkeypatch.setattr(logs_route, "find_similar_logs_by_query", _fake_find_similar_logs_by_query)
+    monkeypatch.setattr(
+        logs_route, "find_similar_logs_by_query", _fake_find_similar_logs_by_query
+    )
 
-    response = logs_route.search_similar_logs(query="amount mismatch", top_k=999, db=MagicMock())
+    response = logs_route.search_similar_logs(
+        query="amount mismatch", top_k=999, db=MagicMock()
+    )
 
     assert captured["top_k"] == 20
     assert response.total == 1
     assert response.results[0].similarity_score == 0.91
 
 
-def test_search_similar_logs_maps_pipeline_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_search_similar_logs_maps_pipeline_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(logs_route, "get_cache_client", lambda: None)
 
     def _raise_pipeline_error(db: MagicMock, query: str, top_k: int):
@@ -147,15 +157,21 @@ def test_search_similar_logs_uses_cache_hit(monkeypatch: pytest.MonkeyPatch) -> 
     fake_cache = _FakeCache(seed={"any": cached})
     monkeypatch.setattr(logs_route, "build_cache_key", lambda *args, **kwargs: "any")
     monkeypatch.setattr(logs_route, "get_cache_client", lambda: fake_cache)
-    monkeypatch.setattr(logs_route, "find_similar_logs_by_query", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        logs_route, "find_similar_logs_by_query", lambda *args, **kwargs: None
+    )
 
-    response = logs_route.search_similar_logs(query="amount mismatch", top_k=3, db=MagicMock())
+    response = logs_route.search_similar_logs(
+        query="amount mismatch", top_k=3, db=MagicMock()
+    )
 
     assert response.total == 1
     assert response.results[0].id == 42
 
 
-def test_search_similar_logs_caches_on_first_call(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_search_similar_logs_caches_on_first_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_cache = _FakeCache()
     calls = {"count": 0}
 
@@ -174,10 +190,16 @@ def test_search_similar_logs_caches_on_first_call(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(logs_route, "build_cache_key", lambda *args, **kwargs: "same")
     monkeypatch.setattr(logs_route, "get_cache_client", lambda: fake_cache)
-    monkeypatch.setattr(logs_route, "find_similar_logs_by_query", _fake_find_similar_logs_by_query)
+    monkeypatch.setattr(
+        logs_route, "find_similar_logs_by_query", _fake_find_similar_logs_by_query
+    )
 
-    first = logs_route.search_similar_logs(query="amount mismatch", top_k=3, db=MagicMock())
-    second = logs_route.search_similar_logs(query="amount mismatch", top_k=3, db=MagicMock())
+    first = logs_route.search_similar_logs(
+        query="amount mismatch", top_k=3, db=MagicMock()
+    )
+    second = logs_route.search_similar_logs(
+        query="amount mismatch", top_k=3, db=MagicMock()
+    )
 
     assert first.total == 1
     assert second.total == 1

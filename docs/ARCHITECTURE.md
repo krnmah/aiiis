@@ -1,159 +1,122 @@
 # AI Incident Investigation System — Architecture
 
-## High-Level System Architecture
+## 1) Problem and Architecture Goal
+
+### Problem
+
+In incident response, teams often spend too much time answering three questions:
+
+- Which logs actually matter?
+- What is the most likely root cause?
+- What should be checked next?
+
+### Goal
+
+Provide a production-oriented architecture that transforms raw logs into structured incident analysis with evidence, confidence, and next checks.
+
+## 2) End-to-End Architecture
 
 ```mermaid
 flowchart TD
 
-A["Application Services
-(Payment, Auth, Orders)"] --> B[Log Ingestion API
-FastAPI]
+Apps[Application Services<br/>Payment, Auth, Orders] --> Ingest[POST /logs<br/>FastAPI]
+Ingest --> DB[(PostgreSQL)]
+DB --> Embeddings[Embedding Generation<br/>sentence-transformers]
+Embeddings --> Vector[(pgvector)]
 
-B --> C[PostgreSQL
-Raw Log Storage]
+Query[Incident Query] --> IncidentAPI[POST /incidents]
+IncidentAPI --> Retrieve[Semantic Retrieval]
+Retrieve --> Vector
+Vector --> Evidence[Top-K Relevant Logs]
 
-C --> D[Embedding Generator
-Sentence Transformers]
-
-D --> E[Vector Store
-pgvector]
-
-F[User Incident Query] --> G[Retrieval Engine]
-
-G --> E
-
-E --> H[Relevant Logs]
-
-H --> I[LLM Provider Layer]
-
-I --> J[Incident Analyzer]
-
-J --> K[Incident Report Generator]
-
-K --> L[Investigation API / Dashboard]
+Evidence --> LLM[LLM Provider Layer]
+LLM --> Analyzer[Incident Analyzer]
+Analyzer --> Report[Structured Incident Output]
 ```
 
----
-
-## LLM Provider Layer (Abstraction)
+## 3) LLM Provider Abstraction
 
 ```mermaid
 flowchart LR
-
-A[LLM Interface]
-
-A --> B[Ollama\nLocal Models]
-A --> C[HuggingFace API]
-A --> D[OpenAI API]
+Base[Base LLM Interface] --> Ollama[Ollama Provider]
+Base --> HF[Hugging Face Provider]
+Base --> OpenAI[OpenAI Provider]
 ```
 
----
+### Why this matters
 
-## CI/CD Architecture
+- provider swap without route/service rewrites
+- model experiments with the same API contract
+- compare outputs with `/llm/compare`
+
+## 4) Key Design Differences
+
+Compared with a generic logging platform, this architecture is intentionally incident-first:
+
+- semantic retrieval over exact keyword-only matching
+- AI analysis constrained by retrieved evidence
+- structured analysis output format for operational decisions
+- provider-level resilience via retry/backoff on transient failures
+
+## 5) What Is Unique Here
+
+- local and cloud model strategy in one system (Ollama + HF + OpenAI)
+- explicit model availability checks and provider comparison endpoints
+- cache-aware retrieval/analysis path with graceful degradation
+- practical observability and CI/CD layers integrated into the same developer workflow
+
+## 6) Observability Architecture
 
 ```mermaid
 flowchart TD
-
-A[Developer Push Code\nGitHub Repository]
-
-A --> B[GitHub Actions Pipeline]
-
-B --> C[Run Unit Tests]
-B --> D[Run Lint & Format Check]
-B --> E[Build Docker Image]
-B --> F[Basic Health Check]
-
-A --> G[Jenkins Pipeline]
-
-G --> H["Run Integration Tests\n(PostgreSQL + Redis)"]
-G --> I[Advanced Validation\nEnd-to-End Flow]
-G --> J[Docker Container Execution Test]
-
-E --> K[Docker Image Ready]
-
-K --> L[Deployment Ready Artifact]
+App[FastAPI App] --> Metrics[Metrics Endpoint: /metrics - Prometheus format];
+Metrics --> Prom[Prometheus];
+Prom --> Grafana[Grafana Dashboards];
 ```
 
----
+Tracked signals include:
 
-## CI/CD Responsibility Separation
+- ingestion request volume and latency
+- retrieval and analysis latency
+- provider error patterns
+- endpoint-level success/failure behavior
 
-### GitHub Actions (Fast Feedback)
-
-- Triggered on every push / PR
-- Runs:
-  - Unit tests
-  - Lint checks (flake8, black)
-  - Docker build
-  - Basic health checks
-
-Purpose:
-
-- Quick validation
-- Developer feedback
-- Prevent broken commits
-
----
-
-### Jenkins (Deeper Validation)
-
-- Triggered via webhook or manually
-- Runs:
-  - Integration tests (DB + Redis)
-  - End-to-end system tests
-  - Container runtime validation
-
-Purpose:
-
-- Simulate production environment
-- Validate system reliability
-- Advanced pipeline control
-
----
-
-## Observability Layer
+## 7) CI/CD Architecture
 
 ```mermaid
 flowchart TD
+Code[Git Push / PR] --> GHA[GitHub Actions]
+Code --> Jenkins[Jenkins Pipeline]
 
-A[FastAPI Application] --> B[Prometheus Metrics]
+GHA --> Unit[Unit Tests]
+GHA --> Lint[Lint Checks]
 
-B --> C[Grafana Dashboards]
+Jenkins --> Integration[Integration Tests<br/>PostgreSQL + Redis]
+Jenkins --> Runtime[Container Runtime Validation]
 ```
 
-Metrics Collected:
+### Responsibility split
 
-- Log ingestion rate
-- Query latency
-- LLM response time
-- Error rates
+- GitHub Actions: quick feedback loop
+- Jenkins: deeper environment-like verification
 
----
+## 8) Technical Components
 
-## Data Flow Summary
+| Layer | Tech |
+|---|---|
+| API | FastAPI, Uvicorn |
+| ORM/DB | SQLAlchemy, PostgreSQL, psycopg |
+| Vector | pgvector |
+| Embeddings | sentence-transformers |
+| LLM | Ollama, Hugging Face Router API, OpenAI Chat Completions |
+| Cache | Redis |
+| Metrics | prometheus-client, Prometheus, Grafana |
+| Quality | pytest, flake8, black |
+| Delivery | Docker, GitHub Actions, Jenkins |
+
+## 9) Runtime Data Path (Summary)
 
 ```text
-Logs → Ingestion API → PostgreSQL → Embeddings → pgvector
-→ Retrieval → LLM → Incident Analysis → Report Generation
+Logs -> Ingestion -> PostgreSQL -> Embeddings -> pgvector
+Incident Query -> Retrieval -> LLM -> Structured Analysis
 ```
-
----
-
-## CI/CD Flow Summary
-
-```text
-Code Push → GitHub Actions (fast checks)
-         → Jenkins (deep validation)
-         → Docker Image → Deployment Ready
-```
-
----
-
-## Key Engineering Highlights
-
-- Distributed log processing pipeline
-- AI-powered root cause analysis
-- Vector similarity search using pgvector
-- LLM abstraction supporting multiple providers
-- Dual CI/CD pipelines (GitHub Actions + Jenkins)
-- Observability with Prometheus and Grafana

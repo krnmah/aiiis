@@ -16,6 +16,7 @@ from app.db.database import initialize_database
 settings = get_settings()
 logger = logging.getLogger("app.main")
 
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # configured logging first so startup/shutdown and db init logs are structured too.

@@ -1,4 +1,5 @@
 import logging
+import time
 
 import httpx
 
@@ -17,6 +18,8 @@ class OpenAIProvider(BaseLLMProvider):
         self._default_model = settings.openai_model
         self._chat_url = settings.openai_chat_completions_url
         self._timeout_seconds = settings.openai_timeout_seconds
+        self._retry_attempts = max(1, settings.llm_retry_attempts)
+        self._retry_backoff_seconds = max(0.0, settings.llm_retry_backoff_seconds)
 
     def generate(
         self,
@@ -44,13 +47,11 @@ class OpenAIProvider(BaseLLMProvider):
         }
 
         try:
-            response = httpx.post(
-                self._chat_url,
+            response = self._post_with_retry(
+                selected_model=selected_model,
                 headers=headers,
-                json=payload,
-                timeout=self._timeout_seconds,
+                payload=payload,
             )
-            response.raise_for_status()
         except Exception as exc:
             status_code = self._extract_status_code(exc)
             if status_code in (401, 403):
@@ -80,3 +81,53 @@ class OpenAIProvider(BaseLLMProvider):
         response = getattr(exc, "response", None)
         status_code = getattr(response, "status_code", None)
         return status_code if isinstance(status_code, int) else None
+
+    def _post_with_retry(
+        self,
+        selected_model: str,
+        headers: dict[str, str],
+        payload: dict[str, object],
+    ) -> httpx.Response:
+        last_exception: Exception | None = None
+
+        for attempt in range(1, self._retry_attempts + 1):
+            try:
+                response = httpx.post(
+                    self._chat_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=self._timeout_seconds,
+                )
+                response.raise_for_status()
+                return response
+            except Exception as exc:  # noqa: BLE001
+                last_exception = exc
+                if attempt < self._retry_attempts and self._is_retryable_exception(exc):
+                    logger.warning(
+                        "openai_retrying_request",
+                        extra={"model": selected_model, "attempt": attempt},
+                    )
+                    time.sleep(self._retry_backoff_seconds * attempt)
+                    continue
+                break
+
+        if last_exception is not None:
+            raise last_exception
+
+        raise LLMProviderError("openai_request_failed")
+
+    def _is_retryable_exception(self, exc: Exception) -> bool:
+        status_code = self._extract_status_code(exc)
+        if status_code in (429, 500, 502, 503, 504):
+            return True
+        return isinstance(
+            exc,
+            (
+                httpx.ConnectError,
+                httpx.ConnectTimeout,
+                httpx.ReadTimeout,
+                httpx.WriteTimeout,
+                httpx.PoolTimeout,
+                httpx.RemoteProtocolError,
+            ),
+        )

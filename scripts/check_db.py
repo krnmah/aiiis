@@ -1,5 +1,3 @@
-import sys
-
 from app.db.database import check_db_connection
 
 

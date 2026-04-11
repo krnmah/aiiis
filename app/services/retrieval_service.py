@@ -2,7 +2,7 @@ import logging
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from app.db.models import LogEntry
 from app.services.exceptions import IngestionPipelineError
@@ -28,6 +28,7 @@ def find_similar_logs_by_embedding(
     distance_expr = LogEntry.embedding.cosine_distance(query_embedding)
     stmt = (
         select(LogEntry, distance_expr.label("distance"))
+        .options(defer(LogEntry.embedding))
         .where(LogEntry.embedding.is_not(None))
         .order_by(distance_expr)
         .limit(top_k)
@@ -39,7 +40,11 @@ def find_similar_logs_by_embedding(
         logger.exception("similarity_query_failed")
         raise IngestionPipelineError("similarity_query_failed") from exc
 
-    # cosine distance is lower for better matches, so convert to higher-is-better score.
+    # cosine distance is lower for better matches.
+    # convert it to a higher-is-better similarity score.
     results = [(row[0], float(1.0 - row[1])) for row in rows]
-    logger.info("similarity_search_succeeded", extra={"result_count": len(results)})
+    logger.info(
+        "similarity_search_succeeded",
+        extra={"result_count": len(results)},
+    )
     return results

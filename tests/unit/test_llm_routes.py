@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 from fastapi import HTTPException
 
@@ -9,8 +7,16 @@ from app.services.exceptions import LLMProviderError
 
 
 def test_llm_test_route_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm_route, "generate_with_local_llm", lambda **kwargs: "ok")
-    monkeypatch.setattr(llm_route, "get_default_llm_model", lambda: "google/flan-t5-base")
+    monkeypatch.setattr(
+        llm_route,
+        "generate_with_local_llm",
+        lambda **kwargs: "ok",
+    )
+    monkeypatch.setattr(
+        llm_route,
+        "get_default_llm_model",
+        lambda: "google/flan-t5-base",
+    )
 
     payload = LLMGenerateRequest(prompt="say hi", model="llama3.2:3b")
     result = llm_route.test_local_llm(payload)
@@ -19,12 +25,22 @@ def test_llm_test_route_success(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.response == "ok"
 
 
-def test_llm_test_route_provider_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_llm_test_route_provider_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def _raise(**kwargs):
         raise LLMProviderError("ollama_request_failed")
 
-    monkeypatch.setattr(llm_route, "generate_with_local_llm", _raise)
-    monkeypatch.setattr(llm_route, "get_default_llm_model", lambda: "google/flan-t5-base")
+    monkeypatch.setattr(
+        llm_route,
+        "generate_with_local_llm",
+        _raise,
+    )
+    monkeypatch.setattr(
+        llm_route,
+        "get_default_llm_model",
+        lambda: "google/flan-t5-base",
+    )
 
     payload = LLMGenerateRequest(prompt="say hi")
 
@@ -36,8 +52,16 @@ def test_llm_test_route_provider_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_llm_model_check_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm_route, "generate_with_local_llm", lambda **kwargs: "ok")
-    monkeypatch.setattr(llm_route, "get_default_llm_model", lambda: "google/flan-t5-base")
+    monkeypatch.setattr(
+        llm_route,
+        "generate_with_local_llm",
+        lambda **kwargs: "ok",
+    )
+    monkeypatch.setattr(
+        llm_route,
+        "get_default_llm_model",
+        lambda: "google/flan-t5-base",
+    )
 
     result = llm_route.check_llm_model(model=None)
 
@@ -49,8 +73,16 @@ def test_llm_model_check_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def _raise(**kwargs):
         raise LLMProviderError("huggingface_model_not_found")
 
-    monkeypatch.setattr(llm_route, "generate_with_local_llm", _raise)
-    monkeypatch.setattr(llm_route, "get_default_llm_model", lambda: "google/flan-t5-base")
+    monkeypatch.setattr(
+        llm_route,
+        "generate_with_local_llm",
+        _raise,
+    )
+    monkeypatch.setattr(
+        llm_route,
+        "get_default_llm_model",
+        lambda: "google/flan-t5-base",
+    )
 
     result = llm_route.check_llm_model(model="bad-model")
 
@@ -60,7 +92,11 @@ def test_llm_model_check_failure(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_llm_compare_outputs_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm_route, "get_default_llm_model_for_provider", lambda provider: f"{provider}-model")
+    monkeypatch.setattr(
+        llm_route,
+        "get_default_llm_model_for_provider",
+        lambda provider: f"{provider}-model",
+    )
     monkeypatch.setattr(
         llm_route,
         "generate_with_provider",
@@ -77,17 +113,30 @@ def test_llm_compare_outputs_success(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.results[1].response == "response-openai"
 
 
-def test_llm_compare_outputs_with_provider_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm_route, "get_default_llm_model_for_provider", lambda provider: f"{provider}-model")
+def test_llm_compare_outputs_with_provider_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        llm_route,
+        "get_default_llm_model_for_provider",
+        lambda provider: f"{provider}-model",
+    )
 
     def _generate_with_provider(**kwargs):
         if kwargs["provider_name"] == "openai":
             raise LLMProviderError("openai_missing_api_key")
         return "ok"
 
-    monkeypatch.setattr(llm_route, "generate_with_provider", _generate_with_provider)
+    monkeypatch.setattr(
+        llm_route,
+        "generate_with_provider",
+        _generate_with_provider,
+    )
 
-    payload = llm_route.LLMCompareRequest(prompt="compare this", providers=["huggingface", "openai"])
+    payload = llm_route.LLMCompareRequest(
+        prompt="compare this",
+        providers=["huggingface", "openai"],
+    )
     result = llm_route.compare_llm_outputs(payload)
 
     assert len(result.results) == 2

@@ -15,7 +15,9 @@ HTTP_REQUEST_DURATION_SECONDS = Histogram(
 )
 
 
-def observe_request(endpoint: str, method: str, status_code: int, duration_seconds: float) -> None:
+def observe_request(
+    endpoint: str, method: str, status_code: int, duration_seconds: float
+) -> None:
     HTTP_REQUESTS_TOTAL.labels(
         endpoint=endpoint,
         method=method,

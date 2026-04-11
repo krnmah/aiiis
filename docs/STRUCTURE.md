@@ -1,87 +1,82 @@
 # Project Folder Structure
 
-aiiis
-│
-├── app/
-│   │
-│   ├── api/
-│   │   └── routes/
-│   │       ├── logs.py                # Log ingestion endpoints
-│   │       ├── incidents.py           # Incident query endpoints
-│   │       └── health.py              # Health check endpoint
-│   │
-│   ├── services/
-│   │   ├── ingestion_service.py       # Handles log ingestion
-│   │   ├── retrieval_service.py       # Vector search logic
-│   │   ├── incident_analyzer.py       # LLM-based analysis
-│   │   └── report_generator.py        # Structured incident reports
-│   │
-│   ├── llm/
-│   │   ├── base_provider.py           # Abstract LLM interface
-│   │   ├── ollama_provider.py         # Local LLM (Ollama)
-│   │   ├── huggingface_provider.py    # HF API integration
-│   │   └── openai_provider.py         # OpenAI integration
-│   │
-│   ├── embeddings/
-│   │   └── embedding_service.py       # Sentence-transformer embeddings
-│   │
-│   ├── vector_store/
-│   │   └── pgvector_store.py          # Vector DB queries (pgvector)
-│   │
-│   ├── db/
-│   │   ├── models.py                  # SQLAlchemy models
-│   │   └── database.py                # DB connection/session
-│   │
-│   ├── core/
-│   │   ├── config.py                  # Environment variables
-│   │   └── logging_config.py          # Structured logging setup
-│   │
-│   ├── metrics/
-│   │   └── prometheus.py              # Prometheus metrics
-│   │
-│   └── main.py                        # FastAPI app entry point
-│
-├── scripts/
-│   ├── simulate_logs.py               # Generate fake logs
-│   └── seed_data.py                   # Optional test data
-│
-├── tests/
-│   ├── unit/
-│   │   ├── test_services.py
-│   │   ├── test_llm.py
-│   │   └── test_embeddings.py
-│   │
-│   ├── integration/
-│   │   ├── test_api.py
-│   │   ├── test_db.py
-│   │   └── test_pipeline.py
-│   │
-│   └── conftest.py
-│
-├── docker/
-│   ├── Dockerfile
-│   ├── docker-compose.yml             # API + DB + Redis + Prometheus + Grafana
-│   ├── docker-compose-test.yml        # Isolated test environment
-│   │
-│   ├── prometheus/
-│   │   └── prometheus.yml
-│   │
-│   └── grafana/
-│       └── dashboards.json
-│
-├── .github/
-│   └── workflows/
-│       └── ci.yml                     # GitHub Actions pipeline
-│
-├── ci/
-│   └── Jenkinsfile                    # Jenkins pipeline
-│
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── API.md
-│   └── SETUP.md
-│
-├── .env.example
-├── requirements.txt
-├── README.md
-└── alembic.ini
+This document explains how the repository is organized and why each area exists.
+
+## Top-Level Layout
+
+```text
+aiiis/
+├── app/                 # Application source code
+├── scripts/             # Utility scripts (checks, simulators)
+├── tests/               # Unit + integration tests
+├── docker/              # Container and observability stack configs
+├── ci/                  # Jenkins pipeline definition
+├── docs/                # Architecture and reference documentation
+├── .github/workflows/   # GitHub Actions pipeline
+├── .env.example         # Environment variable template
+├── requirements.txt     # Python dependencies
+├── Makefile             # Common dev/ops commands
+└── README.md            # Project overview and quick start
+```
+
+## Source Code Structure (`app/`)
+
+```text
+app/
+├── api/
+│   ├── routes/          # FastAPI route handlers (health, logs, llm, incidents, metrics)
+│   └── schemas/         # Pydantic request/response models
+├── cache/               # Redis cache integration
+├── core/                # App config + logging setup
+├── db/                  # DB engine/session and models
+├── embeddings/          # Embedding model + vector generation
+├── llm/                 # Provider abstraction + concrete providers
+├── metrics/             # Prometheus metrics definitions/helpers
+├── services/            # Business logic for ingestion, retrieval, analysis
+├── vector_store/        # Vector search data access helpers
+└── main.py              # FastAPI entrypoint
+```
+
+## Interactive Component Guide
+
+<details>
+<summary><strong>API Layer</strong></summary>
+
+- purpose: expose stable HTTP contracts
+- key files: `app/api/routes`, `app/api/schemas`
+- notable endpoints: `/logs`, `/logs/similar`, `/incidents`, `/llm/test`, `/llm/compare`
+
+</details>
+
+<details>
+<summary><strong>Services Layer</strong></summary>
+
+- purpose: keep business logic independent from transport layer
+- responsibilities: log ingestion, retrieval orchestration, incident analysis, provider orchestration
+
+</details>
+
+<details>
+<summary><strong>LLM Layer</strong></summary>
+
+- purpose: provider abstraction and swap flexibility
+- providers: Ollama, Hugging Face, OpenAI
+- resilience: retry/backoff for transient failures
+
+</details>
+
+<details>
+<summary><strong>Ops and Quality</strong></summary>
+
+- CI: GitHub Actions + Jenkins
+- observability: Prometheus + Grafana under `docker/`
+- tests: `tests/unit` and `tests/integration`
+
+</details>
+
+## Why This Structure Works
+
+- separation of concerns: routes, services, providers, and infrastructure are isolated
+- provider extensibility: adding new LLMs does not require rewriting route logic
+- testability: business logic is test-friendly and mock-friendly
+- production readiness: includes caching, metrics, CI/CD, and container orchestration

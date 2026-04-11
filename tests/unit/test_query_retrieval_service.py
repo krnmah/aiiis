@@ -35,7 +35,9 @@ def test_find_similar_logs_by_query_success(monkeypatch: pytest.MonkeyPatch) -> 
 
     captured: dict[str, object] = {}
 
-    def _fake_find_by_embedding(db: MagicMock, query_embedding: list[float], top_k: int):
+    def _fake_find_by_embedding(
+        db: MagicMock, query_embedding: list[float], top_k: int
+    ):
         captured["query_embedding"] = query_embedding
         captured["top_k"] = top_k
         return [(fake_log, 0.77)]
@@ -58,7 +60,9 @@ def test_find_similar_logs_by_query_success(monkeypatch: pytest.MonkeyPatch) -> 
     assert result[0][1] == 0.77
 
 
-def test_find_similar_logs_by_query_embedding_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_find_similar_logs_by_query_embedding_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class _BrokenEmbeddingService:
         def embed_text(self, _: str) -> list[float]:
             raise RuntimeError("model unavailable")
@@ -69,7 +73,9 @@ def test_find_similar_logs_by_query_embedding_failure(monkeypatch: pytest.Monkey
         lambda: _BrokenEmbeddingService(),
     )
 
-    with pytest.raises(IngestionPipelineError, match="query_embedding_generation_failed"):
+    with pytest.raises(
+        IngestionPipelineError, match="query_embedding_generation_failed"
+    ):
         query_retrieval_service.find_similar_logs_by_query(
             db=MagicMock(),
             query="amount mismatch",

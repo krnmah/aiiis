@@ -50,7 +50,9 @@ def test_create_log_entry_success(monkeypatch: pytest.MonkeyPatch) -> None:
     db.refresh.assert_called_once()
 
 
-def test_create_log_entry_rolls_back_on_db_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_log_entry_rolls_back_on_db_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         ingestion_service,
         "get_embedding_service",

@@ -3,7 +3,11 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.services.exceptions import IncidentAnalysisError, IngestionPipelineError, LLMProviderError
+from app.services.exceptions import (
+    IncidentAnalysisError,
+    IngestionPipelineError,
+    LLMProviderError,
+)
 from app.services.llm_service import generate_with_local_llm
 from app.services.query_retrieval_service import find_similar_logs_by_query
 

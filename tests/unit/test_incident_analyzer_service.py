@@ -5,7 +5,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.services import incident_analyzer_service
-from app.services.exceptions import IncidentAnalysisError, IngestionPipelineError, LLMProviderError
+from app.services.exceptions import (
+    IncidentAnalysisError,
+    IngestionPipelineError,
+    LLMProviderError,
+)
 
 
 def test_build_incident_prompt_with_logs() -> None:
@@ -59,12 +63,16 @@ def test_analyze_incident_success(monkeypatch: pytest.MonkeyPatch) -> None:
 
     captured: dict[str, str] = {}
 
-    def _fake_generate(prompt: str, system_prompt: str | None = None, model: str | None = None) -> str:
+    def _fake_generate(
+        prompt: str, system_prompt: str | None = None, model: str | None = None
+    ) -> str:
         captured["prompt"] = prompt
         captured["system_prompt"] = system_prompt or ""
         return "Root cause: database saturation caused cascading retries."
 
-    monkeypatch.setattr(incident_analyzer_service, "generate_with_local_llm", _fake_generate)
+    monkeypatch.setattr(
+        incident_analyzer_service, "generate_with_local_llm", _fake_generate
+    )
 
     result = incident_analyzer_service.analyze_incident(
         db=MagicMock(),
@@ -85,7 +93,9 @@ def test_analyze_incident_retrieval_failure(monkeypatch: pytest.MonkeyPatch) -> 
     def _raise_retrieval(db, query, top_k):
         raise IngestionPipelineError("query_embedding_generation_failed")
 
-    monkeypatch.setattr(incident_analyzer_service, "find_similar_logs_by_query", _raise_retrieval)
+    monkeypatch.setattr(
+        incident_analyzer_service, "find_similar_logs_by_query", _raise_retrieval
+    )
 
     with pytest.raises(IncidentAnalysisError, match="incident_log_retrieval_failed"):
         incident_analyzer_service.analyze_incident(
@@ -110,10 +120,14 @@ def test_analyze_incident_llm_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda db, query, top_k: [(fake_log, 0.77)],
     )
 
-    def _raise_llm(prompt: str, system_prompt: str | None = None, model: str | None = None) -> str:
+    def _raise_llm(
+        prompt: str, system_prompt: str | None = None, model: str | None = None
+    ) -> str:
         raise LLMProviderError("ollama_request_failed")
 
-    monkeypatch.setattr(incident_analyzer_service, "generate_with_local_llm", _raise_llm)
+    monkeypatch.setattr(
+        incident_analyzer_service, "generate_with_local_llm", _raise_llm
+    )
 
     with pytest.raises(IncidentAnalysisError, match="incident_analysis_llm_failed"):
         incident_analyzer_service.analyze_incident(
@@ -151,7 +165,9 @@ def test_analyze_incident_empty_llm_response(monkeypatch: pytest.MonkeyPatch) ->
         )
 
 
-def test_analyze_incident_no_logs_returns_deterministic_response(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_analyze_incident_no_logs_returns_deterministic_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         incident_analyzer_service,
         "find_similar_logs_by_query",
@@ -160,11 +176,15 @@ def test_analyze_incident_no_logs_returns_deterministic_response(monkeypatch: py
 
     called = {"llm_called": False}
 
-    def _fake_generate(prompt: str, system_prompt: str | None = None, model: str | None = None) -> str:
+    def _fake_generate(
+        prompt: str, system_prompt: str | None = None, model: str | None = None
+    ) -> str:
         called["llm_called"] = True
         return "should not be called"
 
-    monkeypatch.setattr(incident_analyzer_service, "generate_with_local_llm", _fake_generate)
+    monkeypatch.setattr(
+        incident_analyzer_service, "generate_with_local_llm", _fake_generate
+    )
 
     result = incident_analyzer_service.analyze_incident(
         db=MagicMock(),

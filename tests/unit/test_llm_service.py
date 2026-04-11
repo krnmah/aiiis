@@ -48,7 +48,9 @@ def test_generate_with_local_llm_calls_provider_interface(
     }
 
 
-def test_get_llm_provider_returns_ollama_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_llm_provider_returns_ollama_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     llm_service.get_llm_provider.cache_clear()
     monkeypatch.setattr(
         llm_service,
@@ -94,7 +96,9 @@ def test_get_default_llm_model_huggingface(monkeypatch: pytest.MonkeyPatch) -> N
     assert model == "google/flan-t5-base"
 
 
-def test_get_llm_provider_returns_openai_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_llm_provider_returns_openai_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     llm_service.get_llm_provider.cache_clear()
     llm_service.get_llm_provider_by_name.cache_clear()
     monkeypatch.setattr(
@@ -127,9 +131,13 @@ def test_get_default_llm_model_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     assert model == "gpt-4o-mini"
 
 
-def test_generate_with_provider_calls_named_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_with_provider_calls_named_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_provider = FakeProvider()
-    monkeypatch.setattr(llm_service, "get_llm_provider_by_name", lambda name: fake_provider)
+    monkeypatch.setattr(
+        llm_service, "get_llm_provider_by_name", lambda name: fake_provider
+    )
 
     text = llm_service.generate_with_provider(
         provider_name="openai",
