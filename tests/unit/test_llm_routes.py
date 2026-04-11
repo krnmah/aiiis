@@ -57,3 +57,39 @@ def test_llm_model_check_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.available is False
     assert result.model == "bad-model"
     assert result.detail == "huggingface_model_not_found"
+
+
+def test_llm_compare_outputs_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(llm_route, "get_default_llm_model_for_provider", lambda provider: f"{provider}-model")
+    monkeypatch.setattr(
+        llm_route,
+        "generate_with_provider",
+        lambda **kwargs: f"response-{kwargs['provider_name']}",
+    )
+
+    payload = llm_route.LLMCompareRequest(prompt="compare this")
+    result = llm_route.compare_llm_outputs(payload)
+
+    assert len(result.results) == 2
+    assert result.results[0].provider == "huggingface"
+    assert result.results[1].provider == "openai"
+    assert result.results[0].response == "response-huggingface"
+    assert result.results[1].response == "response-openai"
+
+
+def test_llm_compare_outputs_with_provider_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(llm_route, "get_default_llm_model_for_provider", lambda provider: f"{provider}-model")
+
+    def _generate_with_provider(**kwargs):
+        if kwargs["provider_name"] == "openai":
+            raise LLMProviderError("openai_missing_api_key")
+        return "ok"
+
+    monkeypatch.setattr(llm_route, "generate_with_provider", _generate_with_provider)
+
+    payload = llm_route.LLMCompareRequest(prompt="compare this", providers=["huggingface", "openai"])
+    result = llm_route.compare_llm_outputs(payload)
+
+    assert len(result.results) == 2
+    assert result.results[0].response == "ok"
+    assert result.results[1].error == "openai_missing_api_key"

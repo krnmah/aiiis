@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     huggingface_model: str = "google/flan-t5-base"
     huggingface_chat_completions_url: str = "https://router.huggingface.co/v1/chat/completions"
     huggingface_timeout_seconds: int = 60
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o-mini"
+    openai_chat_completions_url: str = "https://api.openai.com/v1/chat/completions"
+    openai_timeout_seconds: int = 60
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
     redis_enabled: bool = True

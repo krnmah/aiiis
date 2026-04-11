@@ -4,6 +4,9 @@ from time import perf_counter
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.schemas.llm import (
+    LLMCompareRequest,
+    LLMCompareResponse,
+    LLMCompareResult,
     LLMGenerateRequest,
     LLMGenerateResponse,
     LLMModelCheckResponse,
@@ -11,7 +14,12 @@ from app.api.schemas.llm import (
 from app.core.config import get_settings
 from app.metrics.prometheus_metrics import observe_request
 from app.services.exceptions import LLMProviderError
-from app.services.llm_service import generate_with_local_llm, get_default_llm_model
+from app.services.llm_service import (
+    generate_with_local_llm,
+    generate_with_provider,
+    get_default_llm_model,
+    get_default_llm_model_for_provider,
+)
 
 router = APIRouter(tags=["llm"])
 logger = logging.getLogger("app.routes.llm")
@@ -80,3 +88,47 @@ def check_llm_model(model: str | None = Query(default=None, max_length=200)) -> 
         available=available,
         detail=detail,
     )
+
+
+@router.post("/llm/compare", response_model=LLMCompareResponse, status_code=status.HTTP_200_OK)
+def compare_llm_outputs(payload: LLMCompareRequest) -> LLMCompareResponse:
+    start_time = perf_counter()
+    status_code = 200
+    results: list[LLMCompareResult] = []
+
+    try:
+        for provider_name in payload.providers:
+            model = payload.model_overrides.get(provider_name) or get_default_llm_model_for_provider(provider_name)
+            try:
+                text = generate_with_provider(
+                    provider_name=provider_name,
+                    prompt=payload.prompt,
+                    system_prompt=payload.system_prompt,
+                    model=model,
+                )
+                results.append(
+                    LLMCompareResult(
+                        provider=provider_name,
+                        model=model,
+                        response=text,
+                    )
+                )
+            except LLMProviderError as exc:
+                status_code = 207
+                logger.warning("llm_compare_provider_failed", extra={"provider": provider_name, "model": model})
+                results.append(
+                    LLMCompareResult(
+                        provider=provider_name,
+                        model=model,
+                        error=str(exc),
+                    )
+                )
+    finally:
+        observe_request(
+            endpoint="/llm/compare",
+            method="POST",
+            status_code=status_code,
+            duration_seconds=perf_counter() - start_time,
+        )
+
+    return LLMCompareResponse(results=results)
