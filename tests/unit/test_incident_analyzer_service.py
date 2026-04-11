@@ -26,8 +26,11 @@ def test_build_incident_prompt_with_logs() -> None:
     assert "Incident query:" in prompt
     assert "payment failures" in prompt
     assert "log_id=10" in prompt
+    assert "timestamp=" in prompt
     assert "service=payments" in prompt
     assert "similarity=0.920" in prompt
+    assert "ROOT_CAUSE:" in prompt
+    assert "CONFIDENCE:" in prompt
 
 
 def test_analyze_incident_success(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -93,10 +96,18 @@ def test_analyze_incident_retrieval_failure(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_analyze_incident_llm_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_log = SimpleNamespace(
+        id=3,
+        service_name="checkout",
+        level="ERROR",
+        message="upstream failed",
+        trace_id="trace-3",
+        timestamp=datetime.now(timezone.utc),
+    )
     monkeypatch.setattr(
         incident_analyzer_service,
         "find_similar_logs_by_query",
-        lambda db, query, top_k: [],
+        lambda db, query, top_k: [(fake_log, 0.77)],
     )
 
     def _raise_llm(prompt: str, system_prompt: str | None = None, model: str | None = None) -> str:
@@ -113,10 +124,18 @@ def test_analyze_incident_llm_failure(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_analyze_incident_empty_llm_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_log = SimpleNamespace(
+        id=4,
+        service_name="catalog",
+        level="ERROR",
+        message="connection reset",
+        trace_id=None,
+        timestamp=datetime.now(timezone.utc),
+    )
     monkeypatch.setattr(
         incident_analyzer_service,
         "find_similar_logs_by_query",
-        lambda db, query, top_k: [],
+        lambda db, query, top_k: [(fake_log, 0.68)],
     )
     monkeypatch.setattr(
         incident_analyzer_service,
@@ -130,3 +149,31 @@ def test_analyze_incident_empty_llm_response(monkeypatch: pytest.MonkeyPatch) ->
             query="payment failures",
             top_k=3,
         )
+
+
+def test_analyze_incident_no_logs_returns_deterministic_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        incident_analyzer_service,
+        "find_similar_logs_by_query",
+        lambda db, query, top_k: [],
+    )
+
+    called = {"llm_called": False}
+
+    def _fake_generate(prompt: str, system_prompt: str | None = None, model: str | None = None) -> str:
+        called["llm_called"] = True
+        return "should not be called"
+
+    monkeypatch.setattr(incident_analyzer_service, "generate_with_local_llm", _fake_generate)
+
+    result = incident_analyzer_service.analyze_incident(
+        db=MagicMock(),
+        query="payment failures",
+        top_k=3,
+    )
+
+    assert called["llm_called"] is False
+    assert result.analyzed_log_ids == []
+    assert result.analyzed_log_count == 0
+    assert "ROOT_CAUSE:" in result.root_cause
+    assert "NEXT_CHECKS:" in result.root_cause

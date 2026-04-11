@@ -11,8 +11,8 @@ logger = logging.getLogger("app.services.incident_analyzer")
 
 
 SYSTEM_PROMPT = (
-    "You are an SRE incident analyzer. Use only the provided logs to infer the most likely root cause. "
-    "If evidence is weak, state uncertainty clearly and suggest the next concrete validation step."
+    "You are an SRE incident analyzer. Use only the provided logs and never invent missing facts. "
+    "Return concise, actionable analysis with explicit evidence and confidence."
 )
 
 
@@ -29,16 +29,22 @@ def _build_incident_prompt(query: str, similar_logs: list[tuple[object, float]])
         return (
             "Incident query:\n"
             f"{query}\n\n"
-            "Related logs:\n"
-            "- no related logs found\n\n"
-            "Return a short root cause analysis and immediate next check."
+            "No related logs were retrieved. "
+            "Return exactly:\n"
+            "ROOT_CAUSE: insufficient evidence\n"
+            "EVIDENCE: none\n"
+            "CONFIDENCE: low\n"
+            "NEXT_CHECKS: provide 2 concrete checks to collect missing evidence"
         )
 
     lines = []
     for log_entry, score in similar_logs:
+        timestamp = getattr(log_entry, "timestamp", None)
+        rendered_ts = timestamp.isoformat() if timestamp is not None else "unknown"
         lines.append(
             "- "
             f"log_id={log_entry.id}; "
+            f"timestamp={rendered_ts}; "
             f"service={log_entry.service_name}; "
             f"level={log_entry.level}; "
             f"trace_id={log_entry.trace_id or 'none'}; "
@@ -52,7 +58,20 @@ def _build_incident_prompt(query: str, similar_logs: list[tuple[object, float]])
         f"{query}\n\n"
         "Related logs:\n"
         f"{joined_logs}\n\n"
-        "Return a short root cause analysis and immediate next check."
+        "Instructions:\n"
+        "- infer the most likely single root cause\n"
+        "- cite 2-4 strongest log facts as evidence\n"
+        "- include confidence as high/medium/low\n"
+        "- give 2 immediate validation checks\n\n"
+        "Return in this exact format:\n"
+        "ROOT_CAUSE: <one sentence>\n"
+        "EVIDENCE:\n"
+        "- <fact 1>\n"
+        "- <fact 2>\n"
+        "CONFIDENCE: <high|medium|low>\n"
+        "NEXT_CHECKS:\n"
+        "- <check 1>\n"
+        "- <check 2>"
     )
 
 
@@ -65,6 +84,23 @@ def analyze_incident(db: Session, query: str, top_k: int = 5) -> IncidentAnalysi
     except IngestionPipelineError as exc:
         logger.exception("incident_log_retrieval_failed")
         raise IncidentAnalysisError("incident_log_retrieval_failed") from exc
+
+    if not similar_logs:
+        logger.info("incident_analysis_no_related_logs")
+        return IncidentAnalysisResult(
+            query=query,
+            root_cause=(
+                "ROOT_CAUSE: insufficient evidence from retrieved logs.\n"
+                "EVIDENCE:\n"
+                "- no related logs were found for this query\n"
+                "CONFIDENCE: low\n"
+                "NEXT_CHECKS:\n"
+                "- verify the query terms and service scope\n"
+                "- collect fresh error logs with matching trace identifiers"
+            ),
+            analyzed_log_ids=[],
+            analyzed_log_count=0,
+        )
 
     prompt = _build_incident_prompt(query=query, similar_logs=similar_logs)
 

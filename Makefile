@@ -17,7 +17,7 @@ dev:
 	@"$(PYTHON)" -m uvicorn app.main:app --reload
 
 test:
-	@"$(PYTHON)" -m pytest -q
+	@"$(PYTHON)" -m pytest -q -rs
 
 test-integration:
 	@"$(PYTHON)" -m pytest tests/integration -q
