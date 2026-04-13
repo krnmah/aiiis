@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.schemas.logs import (
     LogCreateRequest,
     LogCreateResponse,
+    LogDetailResponse,
     LogEmbeddingResponse,
     SimilarLogItem,
     SimilarLogsResponse,
@@ -17,7 +18,7 @@ from app.db.database import get_db
 from app.metrics.prometheus_metrics import observe_request
 from app.services.ingestion_service import create_log_entry
 from app.services.query_retrieval_service import find_similar_logs_by_query
-from app.services.retrieval_service import get_embedding_for_log
+from app.services.retrieval_service import get_embedding_for_log, get_log_by_id
 from app.services.exceptions import IngestionPipelineError
 
 router = APIRouter(tags=["logs"])
@@ -187,3 +188,32 @@ def search_similar_logs(
         )
 
     return response
+
+
+@router.get("/logs/{log_id}", response_model=LogDetailResponse)
+def get_log_detail(log_id: int, db: Session = Depends(get_db)) -> LogDetailResponse:
+    start_time = perf_counter()
+    status_code = 200
+    try:
+        log_entry = get_log_by_id(db=db, log_id=log_id)
+        if log_entry is None:
+            status_code = 404
+            logger.info("log_detail_not_found", extra={"log_id": log_id})
+            raise HTTPException(status_code=404, detail="Log not found")
+
+        logger.info("log_detail_fetch_succeeded", extra={"log_id": log_id})
+        return LogDetailResponse(
+            id=log_entry.id,
+            service_name=log_entry.service_name,
+            level=log_entry.level,
+            message=log_entry.message,
+            trace_id=log_entry.trace_id,
+            timestamp=log_entry.timestamp,
+        )
+    finally:
+        observe_request(
+            endpoint="/logs/{log_id}",
+            method="GET",
+            status_code=status_code,
+            duration_seconds=perf_counter() - start_time,
+        )

@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     redis_password: str | None = None
     redis_cache_ttl_seconds: int = 120
     database_url: str | None = None
+    cors_allow_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_allow_credentials: bool = True
+    cors_allow_methods: str = "*"
+    cors_allow_headers: str = "*"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -66,3 +70,8 @@ def get_database_url(settings: Settings) -> str:
         f"{settings.postgres_user}:{settings.postgres_password}"
         f"@{settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}"
     )
+
+
+def parse_csv_setting(value: str) -> list[str]:
+    """Split comma-separated config values into a clean list."""
+    return [item.strip() for item in value.split(",") if item.strip()]

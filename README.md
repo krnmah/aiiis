@@ -122,3 +122,4 @@ This generates realistic multi-service incidents (payment timeout, auth outage, 
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Project Structure](docs/STRUCTURE.md)
+- [Frontend UI Guide](web/README.md)

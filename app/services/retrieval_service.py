@@ -10,6 +10,12 @@ from app.services.exceptions import IngestionPipelineError
 logger = logging.getLogger("app.retrieval")
 
 
+def get_log_by_id(db: Session, log_id: int) -> LogEntry | None:
+    # fetch only the requested row, keeping this endpoint straightforward and fast.
+    stmt = select(LogEntry).where(LogEntry.id == log_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
 def get_embedding_for_log(db: Session, log_id: int) -> list[float] | None:
     # keep this read lightweight by selecting only the embedding column.
     stmt = select(LogEntry.embedding).where(LogEntry.id == log_id)

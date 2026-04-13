@@ -90,6 +90,34 @@ def test_get_log_embedding_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     assert exc.value.status_code == 404
 
 
+def test_get_log_detail_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_log = SimpleNamespace(
+        id=51,
+        service_name="payment-service",
+        level="ERROR",
+        message="timeout from downstream",
+        trace_id="trace-51",
+        timestamp=datetime.now(timezone.utc),
+    )
+    monkeypatch.setattr(logs_route, "get_log_by_id", lambda db, log_id: fake_log)
+
+    result = logs_route.get_log_detail(log_id=51, db=MagicMock())
+
+    assert result.id == 51
+    assert result.service_name == "payment-service"
+    assert result.level == "ERROR"
+
+
+def test_get_log_detail_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(logs_route, "get_log_by_id", lambda db, log_id: None)
+
+    with pytest.raises(HTTPException) as exc:
+        logs_route.get_log_detail(log_id=999, db=MagicMock())
+
+    assert exc.value.status_code == 404
+    assert exc.value.detail == "Log not found"
+
+
 def test_search_similar_logs_clamps_top_k(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, int] = {}
     monkeypatch.setattr(logs_route, "get_cache_client", lambda: None)

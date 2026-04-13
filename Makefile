@@ -1,6 +1,6 @@
 PYTHON := .venv/Scripts/python.exe
 
-.PHONY: setup install run dev test test-integration lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password docker-up docker-down docker-logs simulate-logs
+.PHONY: setup install run dev test test-integration lint format db-up db-down db-logs db-check monitor-up monitor-down monitor-logs cache-up cache-down cache-logs jenkins-up jenkins-down jenkins-logs jenkins-password docker-up docker-down docker-logs simulate-logs web-install web-dev web-build web-lint
 
 setup:
 	@"$(PYTHON)" -m venv .venv
@@ -81,3 +81,15 @@ docker-logs:
 
 simulate-logs:
 	@"$(PYTHON)" -m scripts.simulate_logs --count 50 --scenario mixed
+
+web-install:
+	npm --prefix web install
+
+web-dev:
+	npm --prefix web run dev
+
+web-build:
+	npm --prefix web run build
+
+web-lint:
+	npm --prefix web run lint

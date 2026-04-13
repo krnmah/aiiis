@@ -21,6 +21,15 @@ class LogCreateResponse(BaseModel):
     timestamp: datetime
 
 
+class LogDetailResponse(BaseModel):
+    id: int
+    service_name: str
+    level: str
+    message: str
+    trace_id: str | None
+    timestamp: datetime
+
+
 class LogEmbeddingResponse(BaseModel):
     log_id: int
     embedding_dimension: int
